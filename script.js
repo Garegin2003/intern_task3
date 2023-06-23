@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const images = result.status === 'fulfilled' && result.value.length !== 0 ? result.value.slice(0, MAX_IMAGES) : [];
-
+  
       if (images.length !== 0) {
         hasImages = true;
 
