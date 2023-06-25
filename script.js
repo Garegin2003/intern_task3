@@ -3,7 +3,7 @@ const FLICKR_API_KEY = 'b3ce50d157bf5280e6b91ebc5f42bdd8';
 const MAX_IMAGES = 5;
 let imgs = [];
 let isAddingImages = false;
-let baskets = [];
+let baskets = {};
 
 document.addEventListener('DOMContentLoaded', () => {
   const button = document.getElementById('button');
@@ -19,17 +19,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let search = document.getElementById('search').value;
     let searchTerms = search.split(' ');
-    console.log(searchTerms);
 
     container.innerHTML = '';
     basketsContainer.innerHTML = '';
     imgs = [];
-    baskets = [];
+    baskets = {};
 
     let hasImages = false;
 
-    for (let i = 0; i < searchTerms.length; i++) {
-      const term = searchTerms[i];
+    const terms = [...searchTerms]; // Создаем копию searchTerms
+
+    for (let i = 0; i < terms.length; i++) {
+      const term = terms[i];
       const images = await fetchImages(term);
 
       if (images.length !== 0) {
@@ -56,23 +57,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         imgs = [...imgs, ...images];
-        imgs.sort(() => Math.random() - 0.5);
+        shuffleArray(imgs);
 
         for (const img of imgs) {
           const imgElement = document.createElement('img');
           imgElement.src = img.img;
           imgElement.draggable = true;
           imgElement.ondragstart = handleImageDragStart;
-          container.appendChild(imgElement);
+
+          const existingImage = container.querySelector(`img[src="${img.img}"]`);
+          if (!existingImage) {
+            container.appendChild(imgElement);
+          }
         }
+
+        baskets[basketId] = [];
+        terms.splice(i, 1);
+        i--;
       }
     }
 
     if (!hasImages) {
       container.innerHTML = 'No images found.';
     }
-
-    console.log(imgs);
 
     isAddingImages = false;
   });
@@ -85,23 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleImageDrop(e, basketId) {
     e.preventDefault();
     const imageSrc = e.dataTransfer.getData('text/plain');
-    const matchingImage = imgs.find(
-      (img) => img.img === imageSrc && img.keyword === basketId
-    );
-    if (matchingImage && !baskets.some((e) => e.img === matchingImage.img)) {
-      baskets.push(matchingImage);
+    const matchingImage = imgs.find((img) => img.img === imageSrc && img.keyword === basketId);
+    if (matchingImage && !baskets[basketId].some((e) => e.img === matchingImage.img)) {
+      baskets[basketId].push(matchingImage);
       console.log(baskets);
-      const basketDiv = document.getElementById(matchingImage.keyword);
+      const basketDiv = document.getElementById(basketId);
       basketDiv.innerHTML = '';
       const fragment = document.createDocumentFragment();
 
-      baskets
-        .filter((e) => e.keyword === basketId)
-        .forEach((image) => {
-          const imgElement = document.createElement('img');
-          imgElement.src = image.img;
-          fragment.appendChild(imgElement);
-        });
+      baskets[basketId].forEach((image) => {
+        const imgElement = document.createElement('img');
+        imgElement.src = image.img;
+        fragment.appendChild(imgElement);
+      });
 
       basketDiv.appendChild(fragment);
 
@@ -117,21 +120,38 @@ document.addEventListener('DOMContentLoaded', () => {
     e.dataTransfer.setData('text/plain', e.target.src);
   }
 
-  async function fetchImages(term) {
-    try {
-      const response = await fetch(
+  function fetchImages(term) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        'GET',
         `${FLICKR_API_URL}?method=flickr.photos.search&api_key=${FLICKR_API_KEY}&format=json&nojsoncallback=1&text=${term}&per_page=${MAX_IMAGES}`
       );
-      const json = await response.json();
-      return json.photos.photo?.map((photo) => {
-        return {
-          img: `https://farm${photo.farm}.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}.jpg`,
-          keyword: term,
-        };
-      });
-    } catch (error) {
-      console.error(error);
-      return [];
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          const json = JSON.parse(xhr.responseText);
+          const images = json.photos.photo?.map((photo) => {
+            return {
+              img: `https://farm${photo.farm}.staticflickr.com/${photo.server}/${photo.id}_${photo.secret}.jpg`,
+              keyword: term,
+            };
+          });
+          resolve(images || []);
+        } else {
+          reject(new Error('Request failed.'));
+        }
+      };
+      xhr.onerror = function () {
+        reject(new Error('Request failed.'));
+      };
+      xhr.send();
+    });
+  }
+
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
     }
   }
 });
