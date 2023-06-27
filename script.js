@@ -1,99 +1,108 @@
 const FLICKR_API_URL = 'https://api.flickr.com/services/rest/';
 const FLICKR_API_KEY = 'b3ce50d157bf5280e6b91ebc5f42bdd8';
 const MAX_IMAGES = 5;
-let imgs = [];
+const baskets = {};
+const search = document.querySelector('.form__search');
+const container = document.querySelector('.container');
+const basketsContainer = document.querySelector('.baskets');
+const form = document.querySelector('.form');
 let isAddingImages = false;
-let baskets = {};
+let imgs = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-  const button = document.getElementById('button');
-  const container = document.getElementById('container');
-  const basketsContainer = document.getElementById('baskets');
+  form.addEventListener('submit', submitHandler);
 
-  button.addEventListener('click', async (e) => {
+  function submitHandler(e) {
     e.preventDefault();
     if (isAddingImages) {
       return;
     }
     isAddingImages = true;
 
-    let search = document.getElementById('search').value;
-    let searchTerms = search.split(' ');
-
     container.innerHTML = '';
     basketsContainer.innerHTML = '';
-    imgs = [];
-    baskets = {};
+    let searchTerms = search.value
+      .split(' ')
+      .filter((e) => e.trim().length > 0);
+    const terms = [...searchTerms];
 
-    let hasImages = false;
+    const promises = terms.map((term) => fetchImages(term));
 
-    const terms = [...searchTerms]; // Создаем копию searchTerms
+    Promise.all(promises)
 
-    for (let i = 0; i < terms.length; i++) {
-      const term = terms[i];
-      const images = await fetchImages(term);
+      .then((results) => {
+        results.forEach((images, index) => {
+          const term = terms[index];
+          console.log(terms);
+          if (images.length !== 0) {
+            console.log(terms[index]);
+            const basketDiv = document.createElement('div');
+            const basketId = `${term}`;
+            basketDiv.id = basketId;
+            basketDiv.classList.add('baskets__item');
+            basketsContainer.appendChild(basketDiv);
+            basketDiv.ondragover = allowImageDrop;
+            basketDiv.ondrop = (e) => handleImageDrop(e, basketId);
+            const basketName = document.createElement('span');
+            basketName.textContent = term;
+            basketDiv.appendChild(basketName);
 
-      if (images.length !== 0) {
-        hasImages = true;
+            basketDiv.addEventListener('click', () => {
+              if (basketDiv.classList.contains('baskets__item--selected')) {
+                basketDiv.classList.remove('baskets__item--selected');
+              } else {
+                basketDiv.classList.add('baskets__item--selected');
+              }
+            });
 
-        const basketDiv = document.createElement('div');
-        const basketId = `${term}`;
-        basketDiv.id = basketId;
-        basketDiv.classList.add('basket');
-        basketsContainer.appendChild(basketDiv);
-        basketDiv.ondragover = allowImageDrop;
-        basketDiv.ondrop = (e) => handleImageDrop(e, basketId);
+            imgs.push(...images);
 
-        const basketName = document.createElement('span');
-        basketName.textContent = term;
-        basketDiv.appendChild(basketName);
+            baskets[basketId] = [];
 
-        basketDiv.addEventListener('click', () => {
-          if (basketDiv.classList.contains('selected')) {
-            basketDiv.classList.remove('selected');
-          } else {
-            basketDiv.classList.add('selected');
+            console.log(basketId);
           }
         });
 
-        imgs = [...imgs, ...images];
-        shuffleArray(imgs);
+        imgs.sort(() => Math.random() - 0.5);
 
-        for (const img of imgs) {
+        imgs.forEach((e) => {
           const imgElement = document.createElement('img');
-          imgElement.src = img.img;
+          imgElement.src = e.img;
           imgElement.draggable = true;
+          imgElement.classList.add('container__item')
           imgElement.ondragstart = handleImageDragStart;
-
-          const existingImage = container.querySelector(`img[src="${img.img}"]`);
+          imgElement.ondragend = allowImageDrop
+          const existingImage = container.querySelector(`img[src="${e.img}"]`);
           if (!existingImage) {
             container.appendChild(imgElement);
           }
-        }
+        });
+      })
+      .catch((error) => {
+        console.log('Error fetching images:', error);
+      })
+      .finally(() => {
+        search.value = '';
+      });
 
-        baskets[basketId] = [];
-        terms.splice(i, 1);
-        i--;
-      }
-    }
-
-    if (!hasImages) {
-      container.innerHTML = 'No images found.';
-    }
+    imgs = [];
 
     isAddingImages = false;
-  });
-
+  }
   function allowImageDrop(e) {
     e.preventDefault();
-    console.log('ondragover');
+    e.target.classList.remove('container__item--opacity')
   }
 
   function handleImageDrop(e, basketId) {
     e.preventDefault();
+    console.log(e);
     const imageSrc = e.dataTransfer.getData('text/plain');
-    const matchingImage = imgs.find((img) => img.img === imageSrc && img.keyword === basketId);
-    if (matchingImage && !baskets[basketId].some((e) => e.img === matchingImage.img)) {
+    const matchingImage = imgs.find(
+      (img) => img.img === imageSrc && img.keyword === basketId
+    );
+    const existingImages = container.querySelectorAll(`img[src="${matchingImage.img}"]`);
+    if ( matchingImage && !baskets[basketId].some((e) => e.img === matchingImage.img)) {
       baskets[basketId].push(matchingImage);
       console.log(baskets);
       const basketDiv = document.getElementById(basketId);
@@ -111,6 +120,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const basketName = document.createElement('span');
       basketName.textContent = matchingImage.keyword;
       basketDiv.appendChild(basketName);
+
+      existingImages.forEach((img) => {
+        img.classList.add('container__item--none')
+      });
+    } else {
+
+      console.log('Image does not match the basket.');
+    }
+
+    const allBasketsFilled = Object.values(baskets).every(
+      (basket) => basket.length >= MAX_IMAGES
+    );
+    if (allBasketsFilled) {
+      container.innerHTML = '<h1>All sorted</h1>';
+      console.log('All baskets are filled. Process completed.');
     } else {
       console.log('Image does not match the basket.');
     }
@@ -118,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function handleImageDragStart(e) {
     e.dataTransfer.setData('text/plain', e.target.src);
+    e.target.classList.add('container__item--opacity')
   }
 
   function fetchImages(term) {
@@ -146,12 +171,5 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       xhr.send();
     });
-  }
-
-  function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
   }
 });
