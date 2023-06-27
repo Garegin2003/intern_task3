@@ -1,0 +1,23 @@
+{
+  "name": "task3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "scss": "node-sass -w scss -o css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Garegin2003/intern_task3.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Garegin2003/intern_task3/issues"
+  },
+  "homepage": "https://github.com/Garegin2003/intern_task3#readme",
+  "dependencies": {
+    "node-sass": "^9.0.0"
+  }
+}
