@@ -8,8 +8,9 @@ const basketsContainer = document.querySelector('.baskets');
 const form = document.querySelector('.form');
 const button = document.querySelector('.form__button');
 const content = document.querySelector('.content');
-let imgs = [];
 
+
+let imgs = [];
 form.addEventListener('submit', submitHandler);
 
 function submitHandler(e) {
@@ -24,13 +25,13 @@ function submitHandler(e) {
     .split(' ')
     .filter((e) => e.trim().length > 0);
   const terms = [...new Set(searchTerms)];
-  const promises = terms.map((term) => fetchImages(term));
 
-  Promise.all(promises)
+  let promiseCount = 0;
+  let resolvedCount = 0;
 
-    .then((results) => {
-      results.forEach((images, index) => {
-        const term = terms[index];
+  terms.forEach((term) => {
+    fetchImages(term)
+      .then((images) => {
         if (images.length !== 0) {
           const basketDiv = document.createElement('div');
           const basketId = `${term}`;
@@ -54,37 +55,44 @@ function submitHandler(e) {
           imgs.push(...images);
 
           baskets[basketId] = [];
+        }
+      })
+      .catch((error) => {
+        console.log('Error fetching images:', error);
+      })
+      .finally(() => {
+        resolvedCount++;
 
+        if (resolvedCount === promiseCount) {
+          imgs.sort(() => Math.random() - 0.5);
+
+          imgs.forEach((e) => {
+            const imgElement = document.createElement('img');
+            imgElement.src = e.img;
+            imgElement.draggable = true;
+            imgElement.classList.add('container__item');
+            imgElement.ondragstart = handleImageDragStart;
+            imgElement.ondragend = allowImageDrop;
+            const existingImage = container.querySelector(`img[src="${e.img}"]`);
+            if (!existingImage) {
+              container.appendChild(imgElement);
+            }
+          });
+
+          button.disabled = false;
+
+          if (imgs.length === 0) {
+            container.innerHTML = '<h1>No images</h1>';
+          }
         }
       });
 
-      imgs.sort(() => Math.random() - 0.5);
-
-      imgs.forEach((e) => {
-        const imgElement = document.createElement('img');
-        imgElement.src = e.img;
-        imgElement.draggable = true;
-        imgElement.classList.add('container__item');
-        imgElement.ondragstart = handleImageDragStart;
-        imgElement.ondragend = allowImageDrop;
-        const existingImage = container.querySelector(`img[src="${e.img}"]`);
-        if (!existingImage) {
-          container.appendChild(imgElement);
-        }
-      });
-    })
-    .catch((error) => {
-      console.log('Error fetching images:', error);
-    })
-    .finally(() => {
-      button.disabled = false;
-      if (imgs.length === 0) {
-        container.innerHTML = '<h1>No images</h1>'
-      }
-    });
+    promiseCount++;
+  });
 
   imgs = [];
 }
+
 function allowImageDrop(e) {
   e.preventDefault();
   e.target.classList.remove('container__item--opacity');
