@@ -9,7 +9,6 @@ const form = document.querySelector('.form');
 const button = document.querySelector('.form__button');
 const content = document.querySelector('.content');
 
-
 let imgs = [];
 form.addEventListener('submit', submitHandler);
 
@@ -24,11 +23,8 @@ function submitHandler(e) {
     .toLowerCase()
     .split(' ')
     .filter((e) => e.trim().length > 0);
-  const terms = [...new Set(searchTerms)];
 
-  let promiseCount = 0;
-  let resolvedCount = 0;
-
+  const terms = searchTerms.filter((e, i, arr) => arr.indexOf(e) === i);
   terms.forEach((term) => {
     fetchImages(term)
       .then((images) => {
@@ -55,15 +51,7 @@ function submitHandler(e) {
           imgs.push(...images);
 
           baskets[basketId] = [];
-        }
-      })
-      .catch((error) => {
-        console.log('Error fetching images:', error);
-      })
-      .finally(() => {
-        resolvedCount++;
 
-        if (resolvedCount === promiseCount) {
           imgs.sort(() => Math.random() - 0.5);
 
           imgs.forEach((e) => {
@@ -73,26 +61,27 @@ function submitHandler(e) {
             imgElement.classList.add('container__item');
             imgElement.ondragstart = handleImageDragStart;
             imgElement.ondragend = allowImageDrop;
-            const existingImage = container.querySelector(`img[src="${e.img}"]`);
+            const existingImage = container.querySelector(
+              `img[src="${e.img}"]`
+            );
             if (!existingImage) {
               container.appendChild(imgElement);
             }
           });
-
-          button.disabled = false;
-
-          if (imgs.length === 0) {
-            container.innerHTML = '<h1>No images</h1>';
-          }
         }
+      })
+      .catch((error) => {
+        container.innerHTML = `<h1>Error fetching images: ${error}</h1>`;
+      })
+      .finally(() => {
+        button.disabled = false;
       });
-
-    promiseCount++;
+    if (imgs.some((e) => e.keyword !== term)) {
+      container.innerHTML = '<h1>No images</h1>';
+    }
+    imgs = [];
   });
-
-  imgs = [];
 }
-
 function allowImageDrop(e) {
   e.preventDefault();
   e.target.classList.remove('container__item--opacity');
@@ -132,8 +121,6 @@ function handleImageDrop(e, basketId) {
     existingImages.forEach((img) => {
       img.classList.add('container__item--none');
     });
-  } else {
-    console.log('Image does not match the basket.');
   }
 
   const allBasketsFilled = Object.values(baskets).every(
@@ -142,8 +129,6 @@ function handleImageDrop(e, basketId) {
   );
   if (allBasketsFilled) {
     container.innerHTML = '<h1>All sorted</h1>';
-  } else {
-    console.log('Image does not match the basket.');
   }
 }
 
