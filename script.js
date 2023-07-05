@@ -8,6 +8,7 @@ const basketsContainer = document.querySelector('.baskets');
 const form = document.querySelector('.form');
 const button = document.querySelector('.form__button');
 const content = document.querySelector('.content');
+const noimages = document.querySelector('.no-images')
 
 let imgs = [];
 form.addEventListener('submit', submitHandler);
@@ -50,6 +51,8 @@ function submitHandler(e) {
 
           imgs.push(...images);
 
+ 
+
           baskets[basketId] = [];
 
           imgs.sort(() => Math.random() - 0.5);
@@ -69,16 +72,22 @@ function submitHandler(e) {
             }
           });
         }
+
       })
       .catch((error) => {
         container.innerHTML = `<h1>Error fetching images: ${error}</h1>`;
       })
       .finally(() => {
         button.disabled = false;
+        if (imgs.length ===0) {
+          console.log(5);
+          noimages.innerHTML = '<h1>No images</h1>';
+        }
+        if (imgs.length > 0) {
+          noimages.innerHTML = ''
+        }
       });
-    if (imgs.some((e) => e.keyword !== term)) {
-      container.innerHTML = '<h1>No images</h1>';
-    }
+
     imgs = [];
   });
 }
