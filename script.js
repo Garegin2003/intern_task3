@@ -55,7 +55,7 @@ function submitHandler(e) {
 
           baskets[basketId] = [];
 
-          imgs.sort(() => Math.random() - 0.5);
+          imgs.sort(() => Math.random() > 0.5);
 
           imgs.forEach((e) => {
             const imgElement = document.createElement('img');
