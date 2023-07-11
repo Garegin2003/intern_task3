@@ -22,8 +22,6 @@
       width: 150px;
       height: 150px;
       border-radius: 50px; }
-      .content .container__item--none {
-        display: none; }
   .content .form {
     display: flex;
     justify-content: space-around;
