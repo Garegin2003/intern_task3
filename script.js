@@ -10,6 +10,7 @@ const form = document.querySelector('.form');
 const button = document.querySelector('.form__button');
 const content = document.querySelector('.content');
 const noimages = document.querySelector('.no-images');
+
 let imgs = [];
 
 form.addEventListener('submit', submitHandler);
@@ -18,29 +19,28 @@ function submitHandler(e) {
   e.preventDefault();
 
   button.disabled = true;
+
   imgs = [];
 
   container.innerHTML = '';
   basketsContainer.innerHTML = '';
 
-  let searchTerms = search.value
+  const terms = search.value
+
     .toLowerCase()
     .split(' ')
-    .filter((e) => e.trim().length > 0);
+    .filter((e) => e.trim().length > 0)
+    .filter((e, i, arr) => arr.indexOf(e) === i);
 
-  const terms = searchTerms.filter((e, i, arr) => arr.indexOf(e) === i);
   const totalSearches = terms.length;
 
   let completedSearches = 0;
   let existingImages = [];
 
   terms.forEach((term) => {
-
     fetchImages(term, (error, result) => {
-
       if (error) {
         container.innerHTML = `<h1>Error fetching images: ${error}</h1>`;
-
       } else {
         const { term, images } = result;
 
@@ -57,25 +57,21 @@ function submitHandler(e) {
           basketDiv.appendChild(basketName);
 
           basketDiv.addEventListener('click', () => {
-
             if (basketDiv.classList.contains('baskets__item--selected')) {
               basketDiv.classList.remove('baskets__item--selected');
             } else {
               basketDiv.classList.add('baskets__item--selected');
             }
-
           });
 
-          let uniqueImages = images.filter(
-            (image) => !existingImages.includes(image.img)
-          );
+          let uniqueImages = images.filter((image) => !existingImages.includes(image.img));
 
           imgs.push(...uniqueImages);
           existingImages.push(...uniqueImages.map((image) => image.img));
 
           baskets[basketId] = [];
         } else {
-          noimages.innerHTML = '<h1>No images</h1>';
+          noimages.innerHTML = '<h1>Loading...</h1>';
         }
       }
 
@@ -114,22 +110,14 @@ function allowImageDrop(e) {
 }
 
 function handleImageDrop(e, basketId) {
-
   e.preventDefault();
+
   const imageSrc = e.dataTransfer.getData('text/plain');
-  const matchingImage = imgs.find(
-    (img) => img.img === imageSrc && img.keyword === basketId
-  );
+  const matchingImage = imgs.find((img) => img.img === imageSrc && img.keyword === basketId);
 
-  const existingImages = container.querySelectorAll(
-    `img[src="${matchingImage.img}"]`
-  );
+  const existingImages = container.querySelectorAll(`img[src="${matchingImage.img}"]`);
 
-  if (
-    matchingImage &&
-    !baskets[basketId].some((e) => e.img === matchingImage.img)
-  ) {
-
+  if (matchingImage && !baskets[basketId].some((e) => e.img === matchingImage.img)) {
     baskets[basketId].push(matchingImage);
     const basketDiv = document.getElementById(basketId);
     basketDiv.innerHTML = '';
@@ -163,15 +151,14 @@ function handleImageDragStart(e) {
 }
 
 function fetchImages(term, callback) {
-
   const xhr = new XMLHttpRequest();
+
   xhr.open(
     'GET',
     `${FLICKR_API_URL}?method=flickr.photos.search&api_key=${FLICKR_API_KEY}&format=json&nojsoncallback=1&text=${term}&per_page=${MAX_IMAGES}`
   );
 
   xhr.onload = function () {
-    
     if (xhr.status === 200) {
       const json = JSON.parse(xhr.responseText);
       const images = json.photos.photo?.map((photo) => {
@@ -185,6 +172,7 @@ function fetchImages(term, callback) {
         term: term,
         images: images || [],
       };
+
       callback(null, result);
     } else {
       callback(new Error('Request failed.'));
